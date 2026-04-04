@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AARAV — MISSION CONTROL</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0c10;--bg2:#0f1219;--bg3:#151a24;
+    --border:rgba(255,255,255,0.07);--border-bright:rgba(255,255,255,0.15);
+    --orange:#ff5e1a;--orange-dim:rgba(255,94,26,0.15);
+    --teal:#00d4aa;--teal-dim:rgba(0,212,170,0.12);
+    --yellow:#f5c842;--yellow-dim:rgba(245,200,66,0.12);
+    --red:#ff3b3b;--red-dim:rgba(255,59,59,0.12);
+    --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+    --text:#e8e8e0;--text-dim:#7a8090;--text-dimmer:#4a5060;
+    --green:#4cde80;--green-dim:rgba(76,222,128,0.12);
+    --font-display:'Bebas Neue',sans-serif;--font-mono:'Space Mono',monospace;--font-body:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:1000;}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-icon{width:30px;height:30px;}
+  .logo-icon svg{width:100%;height:100%;}
+  .logo-text{font-family:var(--font-display);font-size:19px;letter-spacing:3px;}
+  .logo-text span{color:var(--orange);}
+  .logo-sub{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dimmer);letter-spacing:1.5px;margin-top:1px;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .status-pill{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);}
+  .status-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .badge{font-family:var(--font-mono);font-size:9px;padding:4px 9px;border:1px solid var(--orange);color:var(--orange);letter-spacing:1px;border-radius:2px;}
+
+  .app{display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 55px);overflow:hidden;}
+  .left-col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+  .nav-tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;padding:0 16px;}
+  .tab{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;padding:11px 14px;cursor:pointer;color:var(--text-dim);border:none;background:none;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+  .panel{flex:1;overflow-y:auto;padding:20px 22px;scrollbar-width:thin;scrollbar-color:var(--border-bright) transparent;}
+  .panel::-webkit-scrollbar{width:3px;}
+  .panel::-webkit-scrollbar-thumb{background:var(--border-bright);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .sl{font-family:var(--font-mono);font-size:8.5px;letter-spacing:3px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:12px;margin-top:20px;display:flex;align-items:center;gap:8px;}
+  .sl:first-child{margin-top:0;}
+  .sl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  /* SCHEDULE */
+  .phase-group{margin-bottom:22px;}
+  .phase-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+  .phase-name{font-family:var(--font-display);font-size:15px;letter-spacing:2px;}
+  .phase-range{font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);}
+  .week-card{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:start;padding:10px;border-radius:3px;margin-bottom:2px;cursor:pointer;transition:background .15s;border:1px solid transparent;}
+  .week-card:hover{background:rgba(255,255,255,0.02);}
+  .week-card.current{background:var(--orange-dim);border-color:rgba(255,94,26,0.2);}
+  .week-card.done{opacity:.45;}
+  .wnum{font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);}
+  .wnum .n{font-size:17px;font-weight:700;color:var(--text-dim);display:block;line-height:1;}
+  .week-card.current .wnum .n{color:var(--orange);}
+  .wtitle{font-size:12px;font-weight:500;margin-bottom:2px;}
+  .wdesc{font-size:11px;color:var(--text-dim);line-height:1.5;}
+  .wcost{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:20px;display:inline-block;margin-top:4px;}
+  .cost-free{background:var(--green-dim);color:var(--green);}
+  .cost-low{background:var(--teal-dim);color:var(--teal);}
+  .cost-mid{background:var(--yellow-dim);color:var(--yellow);}
+  .cost-high{background:var(--orange-dim);color:var(--orange);}
+  .check-circle{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--border-bright);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;}
+  .check-circle.done{background:var(--green);border-color:var(--green);}
+  .check-circle.done::after{content:'✓';font-size:9px;color:#000;font-weight:700;}
+
+  /* BUDGET */
+  .budget-hero{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
+  .mc{background:var(--bg3);border:1px solid var(--border);padding:12px 14px;border-radius:4px;}
+  .mc-label{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;color:var(--text-dimmer);margin-bottom:5px;}
+  .mc-val{font-family:var(--font-display);font-size:26px;line-height:1;}
+  .mc-val.orange{color:var(--orange);} .mc-val.green{color:var(--green);} .mc-val.teal{color:var(--teal);}
+  .mc-sub{font-size:10px;color:var(--text-dim);margin-top:2px;}
+  .bar-hdr{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8px;color:var(--text-dim);margin-bottom:5px;}
+  .bar-track{height:5px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:16px;}
+  .bar-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1);}
+  .add-exp{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+  .add-exp input,.add-exp select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 9px;font-family:var(--font-mono);font-size:9.5px;border-radius:3px;outline:none;transition:border .2s;}
+  .add-exp input:focus,.add-exp select:focus{border-color:var(--orange);}
+  .add-exp input::placeholder{color:var(--text-dimmer);}
+  .add-exp input[type="number"]{width:76px;} .add-exp input[type="text"]{flex:1;min-width:130px;}
+  .btn-add{background:var(--orange);color:#000;border:none;padding:7px 12px;font-family:var(--font-mono);font-size:9.5px;font-weight:700;cursor:pointer;border-radius:3px;letter-spacing:1px;white-space:nowrap;}
+  .btn-add:hover{opacity:.85;}
+  .log-row{display:grid;grid-template-columns:50px 1fr auto auto auto;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:10.5px;}
+  .log-row:hover{background:rgba(255,255,255,0.02);}
+  .log-week{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dimmer);}
+  .log-item{color:var(--text-dim);}
+  .log-budget{font-family:var(--font-mono);font-size:9.5px;color:var(--text-dimmer);}
+  .log-spent{font-family:var(--font-mono);font-size:9.5px;text-align:right;}
+  .log-spent.over{color:var(--red);} .log-spent.under{color:var(--green);}
+  .del-btn{background:none;border:none;color:var(--text-dimmer);cursor:pointer;font-size:11px;padding:0 2px;transition:color .15s;}
+  .del-btn:hover{color:var(--red);}
+
+  /* COURSES */
+  .course-card{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:7px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;}
+  .course-card.done-card{opacity:.45;}
+  .course-card.urgent{border-left:3px solid var(--red);}
+  .course-card.upcoming{border-left:3px solid var(--yellow);}
+  .course-card.later{border-left:3px solid var(--teal);}
+  .course-title{font-size:12.5px;font-weight:500;margin-bottom:3px;}
+  .course-meta{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dimmer);letter-spacing:1px;margin-bottom:5px;}
+  .course-desc{font-size:11px;color:var(--text-dim);line-height:1.55;}
+  .course-tag{font-family:var(--font-mono);font-size:8.5px;padding:2px 7px;border-radius:20px;display:inline-block;margin-top:5px;margin-right:3px;}
+  .tag-rocket{background:var(--orange-dim);color:var(--orange);}
+  .tag-legal{background:var(--red-dim);color:var(--red);}
+  .tag-eng{background:var(--purple-dim);color:var(--purple);}
+  .tag-uni{background:var(--teal-dim);color:var(--teal);}
+  .tag-vce{background:var(--yellow-dim);color:var(--yellow);}
+  .course-check{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .deadline-label{font-family:var(--font-mono);font-size:8.5px;}
+  .deadline-urgent{color:var(--red);} .deadline-upcoming{color:var(--yellow);} .deadline-later{color:var(--teal);} .deadline-done{color:var(--green);}
+  .toggle-btn{font-family:var(--font-mono);font-size:8.5px;padding:3px 8px;border:1px solid var(--border);background:none;color:var(--text-dimmer);cursor:pointer;border-radius:2px;transition:all .15s;letter-spacing:.5px;white-space:nowrap;}
+  .toggle-btn:hover{border-color:var(--green);color:var(--green);}
+  .toggle-btn.done-btn{border-color:var(--green);color:var(--green);}
+
+  /* PROJECTS */
+  .proj-card{background:var(--bg3);border:1px solid var(--border);border-radius:4px;margin-bottom:10px;overflow:hidden;}
+  .proj-header{padding:13px 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);cursor:pointer;}
+  .proj-title{font-family:var(--font-display);font-size:15px;letter-spacing:2px;}
+  .proj-title span{color:var(--orange);}
+  .proj-body{padding:13px 15px;}
+  .milestone-row{display:grid;grid-template-columns:16px 1fr auto;gap:9px;align-items:start;padding:7px 0;border-bottom:1px solid var(--border);}
+  .milestone-row:last-child{border-bottom:none;}
+  .ms-check{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--border-bright);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:2px;transition:all .2s;}
+  .ms-check.done{background:var(--green);border-color:var(--green);}
+  .ms-check.done::after{content:'✓';font-size:8px;color:#000;font-weight:700;}
+  .ms-info-title{font-size:11.5px;font-weight:500;margin-bottom:1px;}
+  .ms-info-desc{font-size:10.5px;color:var(--text-dim);line-height:1.5;}
+  .ms-date{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dimmer);white-space:nowrap;}
+  .skill-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+  .skill-pill{font-family:var(--font-mono);font-size:8.5px;padding:2px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text-dimmer);}
+  .skill-pill.gap{border-color:rgba(255,94,26,.4);color:var(--orange);}
+  .skill-pill.ok{border-color:rgba(76,222,128,.3);color:var(--green);}
+
+  /* OVERVIEW */
+  .overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .ov-card{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:12px 14px;}
+  .ov-label{font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);letter-spacing:2px;margin-bottom:6px;}
+  .ov-val{font-family:var(--font-display);font-size:22px;color:var(--orange);line-height:1;}
+  .ov-val.teal{color:var(--teal);} .ov-val.green{color:var(--green);}
+  .ov-sub{font-size:10.5px;color:var(--text-dim);margin-top:2px;}
+  .alert{padding:9px 13px;border-radius:4px;font-size:11px;display:flex;gap:8px;align-items:flex-start;margin-bottom:7px;line-height:1.55;}
+  .alert.info{background:var(--teal-dim);border:1px solid rgba(0,212,170,.2);color:var(--teal);}
+  .alert.warn{background:var(--yellow-dim);border:1px solid rgba(245,200,66,.2);color:var(--yellow);}
+  .alert.danger{background:var(--red-dim);border:1px solid rgba(255,59,59,.2);color:var(--red);}
+  .alert.success{background:var(--green-dim);border:1px solid rgba(76,222,128,.2);color:var(--green);}
+  .alert-icon{font-size:12px;flex-shrink:0;margin-top:1px;}
+  .timeline-strip{display:flex;gap:2px;margin-bottom:18px;border-radius:4px;overflow:hidden;}
+  .ts-seg{flex:1;padding:8px 5px;text-align:center;font-family:var(--font-mono);font-size:7.5px;letter-spacing:.5px;line-height:1.7;}
+  .ts-seg.ts-exam{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,59,59,.2);}
+  .ts-seg.ts-build{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,94,26,.2);}
+  .ts-seg.ts-app{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(167,139,250,.2);}
+  .ts-seg.ts-now{background:var(--green-dim);color:var(--green);border:1px solid rgba(76,222,128,.3);}
+
+  /* CHAT */
+  .chat-panel{display:flex;flex-direction:column;background:var(--bg2);overflow:hidden;}
+  .chat-header{padding:13px 17px;border-bottom:1px solid var(--border);}
+  .chat-title{font-family:var(--font-display);font-size:14px;letter-spacing:3px;}
+  .chat-title span{color:var(--orange);}
+  .chat-subtitle{font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);letter-spacing:1px;margin-top:1px;}
+  .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .chat-messages::-webkit-scrollbar{width:3px;}
+  .chat-messages::-webkit-scrollbar-thumb{background:var(--border-bright);}
+  .msg{display:flex;flex-direction:column;gap:3px;animation:fadeUp .25s ease;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+  .msg.user{align-items:flex-end;} .msg.ai{align-items:flex-start;}
+  .msg-label{font-family:var(--font-mono);font-size:7.5px;letter-spacing:2px;color:var(--text-dimmer);}
+  .msg-bubble{max-width:93%;padding:9px 12px;border-radius:4px;font-size:11.5px;line-height:1.65;}
+  .msg.user .msg-bubble{background:var(--orange-dim);border:1px solid rgba(255,94,26,.25);}
+  .msg.ai .msg-bubble{background:var(--bg3);border:1px solid var(--border);}
+  .typing-indicator{display:flex;gap:4px;align-items:center;}
+  .typing-dot{width:4px;height:4px;border-radius:50%;background:var(--text-dimmer);animation:typingBounce 1.2s infinite;}
+  .typing-dot:nth-child(2){animation-delay:.2s} .typing-dot:nth-child(3){animation-delay:.4s}
+  @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+  .quick-prompts{padding:0 13px 9px;display:flex;flex-wrap:wrap;gap:5px;}
+  .qp{font-family:var(--font-mono);font-size:8px;padding:4px 8px;border:1px solid var(--border);color:var(--text-dimmer);background:none;cursor:pointer;border-radius:2px;transition:all .15s;white-space:nowrap;}
+  .qp:hover{border-color:var(--orange);color:var(--orange);}
+  .chat-input-wrap{padding:11px 13px;border-top:1px solid var(--border);display:flex;gap:7px;align-items:flex-end;}
+  .chat-input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 11px;font-family:var(--font-body);font-size:11.5px;border-radius:4px;resize:none;outline:none;min-height:36px;max-height:100px;transition:border .2s;line-height:1.5;}
+  .chat-input:focus{border-color:var(--orange);}
+  .chat-input::placeholder{color:var(--text-dimmer);}
+  .send-btn{background:var(--orange);border:none;width:36px;height:36px;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s;}
+  .send-btn:hover{opacity:.85;} .send-btn:disabled{opacity:.3;cursor:not-allowed;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M16 3L20 16L16 14L12 16Z" fill="#ff5e1a"/>
+        <path d="M12 14L8 23L16 19L24 23L20 14" fill="rgba(255,94,26,0.35)"/>
+        <circle cx="16" cy="12" r="2.5" fill="rgba(255,94,26,0.6)"/>
+        <path d="M16 25L14 31L16 29L18 31Z" fill="rgba(255,94,26,0.4)"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">AARAV — <span>MISSION CONTROL</span></div>
+      <div class="logo-sub">FLIGHT COMPUTER · TVC ROCKET · VCE 2026–27 · US APPS 2028</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill"><div class="status-dot"></div>SYSTEMS NOMINAL</div>
+    <div class="badge" id="currentWeekBadge">WEEK 1 / 15</div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="left-col">
+    <div class="nav-tabs">
+      <button class="tab active" onclick="switchTab('overview',this)">OVERVIEW</button>
+      <button class="tab" onclick="switchTab('schedule',this)">ROCKET BUILD</button>
+      <button class="tab" onclick="switchTab('projects',this)">PROJECTS</button>
+      <button class="tab" onclick="switchTab('courses',this)">COURSES &amp; CERTS</button>
+      <button class="tab" onclick="switchTab('budget',this)">BUDGET</button>
+    </div>
+    <div class="panel">
+
+      <!-- ░░ OVERVIEW ░░ -->
+      <div id="view-overview" class="view active">
+        <div class="sl">MASTER TIMELINE 2026–2028</div>
+        <div class="timeline-strip">
+          <div class="ts-seg ts-now">APR–JUN<br>2026<br>▶ NOW</div>
+          <div class="ts-seg ts-build">JUL–SEP<br>2026<br>BUILD</div>
+          <div class="ts-seg ts-exam">OCT–NOV<br>2026<br>Y11 EXAM</div>
+          <div class="ts-seg ts-build">DEC 26–<br>MAY 27<br>BUILD</div>
+          <div class="ts-seg ts-exam">OCT–NOV<br>2027<br>Y12 EXAM</div>
+          <div class="ts-seg ts-app">JAN<br>2028<br>US APPS</div>
+        </div>
+
+        <div class="sl">KEY METRICS</div>
+        <div class="overview-grid">
+          <div class="ov-card"><div class="ov-label">ROCKET BUILD</div><div class="ov-val" id="ov-rocket">0%</div><div class="ov-sub" id="ov-rocket-sub">0 / 15 weeks done</div></div>
+          <div class="ov-card"><div class="ov-label">COURSES DONE</div><div class="ov-val" id="ov-courses">0%</div><div class="ov-sub" id="ov-courses-sub">0 / 15 done</div></div>
+          <div class="ov-card"><div class="ov-label">PROJECT MILESTONES</div><div class="ov-val" id="ov-ms">0%</div><div class="ov-sub" id="ov-ms-sub">0 / 16 done</div></div>
+          <div class="ov-card"><div class="ov-label">BUDGET REMAINING</div><div class="ov-val teal" id="ov-budget">$750</div><div class="ov-sub" id="ov-budget-sub">$0 spent so far</div></div>
+        </div>
+
+        <div class="sl">ALERTS</div>
+        <div class="alert warn"><div class="alert-icon">⚠</div><div>VRA membership required before launch. ~$80–100/yr — visit <strong>victorianrocketry.org.au</strong> to join.</div></div>
+        <div class="alert danger"><div class="alert-icon">!</div><div>Oct–Nov 2026 exam block: cap project work at 4 hrs/week. Plan review-only tasks for those 8 weeks.</div></div>
+        <div class="alert info"><div class="alert-icon">ℹ</div><div>G-motor rocket exceeds 400ft AGL under CASA Part 101 — must launch at VRA Serpentine or Drouin site only.</div></div>
+        <div class="alert success"><div class="alert-icon">✓</div><div>Victoria: G-class motors (≤62.5g propellant) can be purchased without a licence. No permit needed for first launch.</div></div>
+        <div class="alert info"><div class="alert-icon">ℹ</div><div>Your TVC project + flight computer = strong MIT/Caltech application narrative. Document everything with photos and data logs.</div></div>
+
+        <div class="sl">CURRENT WEEK FOCUS</div>
+        <div id="currentFocus" style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--orange);padding:13px;border-radius:4px;font-size:12px;line-height:1.7;color:var(--text-dim);"></div>
+      </div>
+
+      <!-- ░░ SCHEDULE ░░ -->
+      <div id="view-schedule" class="view">
+        <div class="sl">ROCKET BUILD — 15 WEEK PLAN ($50/WEEK)</div>
+        <div id="schedule-content"></div>
+      </div>
+
+      <!-- ░░ PROJECTS ░░ -->
+      <div id="view-projects" class="view">
+        <div class="sl">ENGINEERING PROJECTS — APR 2026 TO SEP 2027</div>
+
+        <div class="proj-card">
+          <div class="proj-header" onclick="toggleProj('fc')">
+            <div>
+              <div class="proj-title">FLIGHT <span>COMPUTER</span></div>
+              <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);margin-top:2px;">STM32/RP2040 · KICAD · EMBEDDED C/C++ · IMU+BARO+GPS · PYRO CHANNELS</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div style="font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:2px;background:var(--teal-dim);color:var(--teal);" id="fc-badge">0%</div>
+              <span style="color:var(--text-dimmer);font-size:12px;" id="fc-arrow">▼</span>
+            </div>
+          </div>
+          <div id="fc-body" class="proj-body">
+            <div style="font-size:11px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">Custom PCB from scratch: power regulation, STM32/RP2040 MCU, IMU (ICM-42688) + barometer (BMP388) + GPS over SPI/I2C, dual MOSFET pyro channels, full flight state machine (PAD→BOOST→COAST→APOGEE→DROGUE→MAIN→LANDED), data logging to flash.</div>
+            <div id="fc-milestones"></div>
+            <div style="margin-top:10px;font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);letter-spacing:2px;margin-bottom:5px;">KNOWLEDGE — GREEN=HAVE · ORANGE=GAP</div>
+            <div class="skill-grid">
+              <span class="skill-pill ok">Fusion 360</span><span class="skill-pill ok">Basic programming</span><span class="skill-pill ok">Spesh 1&2 maths</span>
+              <span class="skill-pill gap">KiCad PCB design</span><span class="skill-pill gap">Embedded C/C++</span><span class="skill-pill gap">SPI/I2C protocols</span><span class="skill-pill gap">State machines</span><span class="skill-pill gap">Sensor fusion</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="proj-card">
+          <div class="proj-header" onclick="toggleProj('tvc')">
+            <div>
+              <div class="proj-title">TVC <span>ROCKET</span></div>
+              <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);margin-top:2px;">2-AXIS GIMBAL · PID CONTROL · FIBREGLASS AIRFRAME · AEROTECH COTS</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div style="font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:2px;background:var(--orange-dim);color:var(--orange);" id="tvc-badge">0%</div>
+              <span style="color:var(--text-dimmer);font-size:12px;" id="tvc-arrow">▼</span>
+            </div>
+          </div>
+          <div id="tvc-body" class="proj-body">
+            <div style="font-size:11px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">2-axis gimballed motor mount, servos driven by the custom flight computer. PID control loop reads IMU to maintain stable attitude during powered ascent. COTS Aerotech solid motors, fibreglass airframe. Target: stable boost phase, successful dual-deploy recovery, full telemetry log.</div>
+            <div id="tvc-milestones"></div>
+            <div style="margin-top:10px;font-family:var(--font-mono);font-size:8px;color:var(--text-dimmer);letter-spacing:2px;margin-bottom:5px;">KNOWLEDGE — GREEN=HAVE · ORANGE=GAP</div>
+            <div class="skill-grid">
+              <span class="skill-pill ok">Fusion 360 CAD</span><span class="skill-pill ok">Methods 1–3 calculus</span><span class="skill-pill ok">Spesh vectors/trig</span>
+              <span class="skill-pill gap">PID control theory</span><span class="skill-pill gap">Linear algebra</span><span class="skill-pill gap">3DOF Python sim</span><span class="skill-pill gap">Servo interfacing</span><span class="skill-pill gap">Fibreglass layup</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ░░ COURSES ░░ -->
+      <div id="view-courses" class="view">
+        <div class="sl">CERTIFICATIONS &amp; LEGAL REQUIREMENTS</div>
+        <div id="cert-list"></div>
+        <div class="sl">ENGINEERING &amp; TECHNICAL COURSES</div>
+        <div id="eng-list"></div>
+        <div class="sl">VCE &amp; US APPLICATION MILESTONES</div>
+        <div id="vce-list"></div>
+      </div>
+
+      <!-- ░░ BUDGET ░░ -->
+      <div id="view-budget" class="view">
+        <div class="sl">BUDGET OVERVIEW</div>
+        <div class="budget-hero">
+          <div class="mc"><div class="mc-label">TOTAL AVAILABLE</div><div class="mc-val orange">$<span id="totalAvail">750</span></div><div class="mc-sub">$50 × 15 weeks</div></div>
+          <div class="mc"><div class="mc-label">TOTAL SPENT</div><div class="mc-val teal">$<span id="totalSpent">0</span></div><div class="mc-sub" id="spentPercent">0% used</div></div>
+          <div class="mc"><div class="mc-label">REMAINING</div><div class="mc-val green">$<span id="totalRemain">750</span></div><div class="mc-sub" id="remainWeeks">~15 weeks runway</div></div>
+        </div>
+        <div class="bar-hdr"><span>BUDGET CONSUMPTION</span><span id="barPct">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="budgetBar" style="width:0%;background:linear-gradient(90deg,#00d4aa,#ff5e1a);"></div></div>
+        <div class="sl">LOG EXPENSE</div>
+        <div class="add-exp">
+          <select id="expenseWeek" style="width:80px;"></select>
+          <input type="text" id="expenseDesc" placeholder="Item description..."/>
+          <input type="number" id="expenseAmt" placeholder="$0" min="0" max="500" step="0.5"/>
+          <button class="btn-add" onclick="addExpense()">+ LOG</button>
+        </div>
+        <div class="sl" style="margin-top:18px;">WEEKLY BREAKDOWN</div>
+        <div id="weeklyLog"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ░░ CHAT ░░ -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-title">FLIGHT <span>AI</span></div>
+      <div class="chat-subtitle">AARAV'S PERSONAL MISSION ASSISTANT</div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="msg ai">
+        <div class="msg-label">FLIGHT AI</div>
+        <div class="msg-bubble">Hey Aarav! I have your full context — Year 11, TVC rocket, custom flight computer, the rocket build plan, $50/wk budget, VCE schedule, and the Victorian legal requirements.<br><br>Ask me anything: KiCad, PID theory, CASA rules, balancing study with the build, or what to tackle this week.</div>
+      </div>
+    </div>
+    <div class="quick-prompts">
+      <button class="qp" onclick="sendQuick('What should I work on this week across all my projects?')">THIS WEEK?</button>
+      <button class="qp" onclick="sendQuick('Give me a quick intro to PID control theory at my maths level')">PID INTRO?</button>
+      <button class="qp" onclick="sendQuick('Where do I start with KiCad for the flight computer?')">KICAD START?</button>
+      <button class="qp" onclick="sendQuick('How do I balance the rocket projects with Year 11 exams in October?')">EXAM PLAN?</button>
+      <button class="qp" onclick="sendQuick('How does my TVC project help my MIT application?')">MIT ANGLE?</button>
+      <button class="qp" onclick="sendQuick('What are the CASA and VRA rules for launching in Victoria?')">LEGAL RULES?</button>
+    </div>
+    <div class="chat-input-wrap">
+      <textarea class="chat-input" id="chatInput" placeholder="Ask anything..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M14 8L2 2L5 8L2 14L14 8Z" fill="black"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════
+
+const PHASES=[
+  {name:"RESEARCH & DESIGN",color:"#3266ad",weeks:[
+    {w:1,title:"Rocket design & safety research",desc:"Choose 54mm mid-power design. Study OpenRocket (free), Estes references. Review VRA rules and CASA Part 101.",cost:"$0",tier:"free"},
+    {w:2,title:"OpenRocket simulation + parts list",desc:"Model in OpenRocket. Finalise fin geometry, nose shape, CG/CP margins. Print final parts list and source suppliers.",cost:"$0–$10",tier:"free"}
+  ]},
+  {name:"PROCUREMENT",color:"#1D9E75",weeks:[
+    {w:3,title:"Airframe tube & nose cone",desc:"54mm phenolic body tube (~$12–18), plastic nose cone (~$8–14). Order from Apogee or LOC Precision.",cost:"$30–$40",tier:"low"},
+    {w:4,title:"Recovery system",desc:"18\" nylon parachute (~$10), 1/4\" elastic shock cord (~$5), quick links (~$4), nomex chute protector (~$8).",cost:"$27–$35",tier:"low"},
+    {w:5,title:"Fin material & motor mount",desc:"1/8\" birch plywood for fins (~$8), 29mm motor mount tube (~$5), centering rings (~$4), motor retainer (~$12).",cost:"$30–$40",tier:"low"},
+    {w:6,title:"Adhesives, hardware & tools",desc:"Epoxy 30-min (~$8), wood filler (~$4), sandpaper pack (~$5), launch lugs (~$5), masking tape, primer spray (~$6).",cost:"$28–$35",tier:"low"}
+  ]},
+  {name:"BUILD",color:"#BA7517",weeks:[
+    {w:7,title:"Motor mount assembly",desc:"Cut mount tube, epoxy centering rings, install aft ring + motor retainer. 24h cure. Test fit in body tube.",cost:"$0",tier:"free"},
+    {w:8,title:"Fin cutting & shaping",desc:"Mark and cut fins from plywood template. Sand to airfoil taper. Seal grain with thinned epoxy.",cost:"$0–$5",tier:"free"},
+    {w:9,title:"Fin attachment & fillets",desc:"3-point epoxy attachment. Internal then external fillets. 48h cure. Most structurally critical step.",cost:"$0",tier:"free"},
+    {w:10,title:"Nose cone & recovery harness",desc:"Eye bolt in nose cone. Tie shock cord and parachute. Install launch lugs. Dry-fit all sections.",cost:"$5–$10",tier:"free"},
+    {w:11,title:"Motor mount install & CG check",desc:"Epoxy motor mount into body tube. Check CG with nose on vs OpenRocket. Add nose weight if needed.",cost:"$5–$15",tier:"low"}
+  ]},
+  {name:"FINISH & TEST",color:"#D4537E",weeks:[
+    {w:12,title:"Priming & surface prep",desc:"2–3 coats filler primer, sand 220-grit between. Fill low spots. Goal: glassy smooth before paint.",cost:"$10–$15",tier:"low"},
+    {w:13,title:"Painting & decals",desc:"Base coat + accents (2 rattle cans ~$12). Mask and stripe. Clear coat (~$6). Optional sticker decals.",cost:"$15–$25",tier:"mid"},
+    {w:14,title:"Ground testing & inspection",desc:"Test ejection charge. Swing/static CG check. Weigh finished rocket. Final OpenRocket comparison.",cost:"$0–$5",tier:"free"}
+  ]},
+  {name:"LAUNCH PREP",color:"#7F77DD",weeks:[
+    {w:15,title:"Motor purchase & VRA launch day",desc:"Aerotech G-class motor (~$20–$35). VRA launch at Serpentine or Drouin. Spare igniters (~$4). LAUNCH!",cost:"$25–$45",tier:"high"}
+  ]}
+];
+
+const FC_MS=[
+  {id:"fc1",title:"KiCad fundamentals complete",desc:"Phil's Lab KiCad 7 series finished. Can capture schematics, layout PCBs, run DRC, export Gerbers.",date:"Jun 2026"},
+  {id:"fc2",title:"Schematic v1 — power & MCU",desc:"Power regulation (3.3V LDO), MCU pinout, decoupling caps. First schematic review done.",date:"Jul 2026"},
+  {id:"fc3",title:"Schematic v2 — sensors & pyro",desc:"IMU (ICM-42688), barometer (BMP388), GPS (u-blox), dual MOSFET pyro channels with continuity sensing.",date:"Aug 2026"},
+  {id:"fc4",title:"PCB layout v1 complete",desc:"All traces routed, separate analog/digital ground planes, test points and JTAG debug header added.",date:"Sep 2026"},
+  {id:"fc5",title:"PCB fabricated & assembled",desc:"Ordered from JLCPCB/PCBWay. Hand-solder or reflow. Full BOM sourced and verified.",date:"Dec 2026"},
+  {id:"fc6",title:"Sensor drivers working in embedded C",desc:"SPI/I2C drivers for IMU + barometer reading correctly. Data logging to flash verified over USB.",date:"Feb 2027"},
+  {id:"fc7",title:"Flight state machine implemented",desc:"PAD→BOOST→COAST→APOGEE→DROGUE→MAIN→LANDED. Pyro fire logic tested on bench rig.",date:"Apr 2027"},
+  {id:"fc8",title:"Flight computer integrated in rocket",desc:"FC mounted in airframe, all connections tested, ground software for data readback working.",date:"Jun 2027"}
+];
+
+const TVC_MS=[
+  {id:"tvc1",title:"Python 3DOF pitch simulation built",desc:"scipy/numpy simulation of rocket pitch dynamics with PID torque input. Tune gains before hardware.",date:"Jun 2026"},
+  {id:"tvc2",title:"PID control theory — course complete",desc:"Brian Douglas control systems series finished. Understand Laplace, transfer functions, root locus, PID tuning.",date:"Jul 2026"},
+  {id:"tvc3",title:"Gimbal mount designed in Fusion 360",desc:"2-axis gimbal with servo attachment points. PLA-CF prototype printed. Slop and backlash measured.",date:"Aug 2026"},
+  {id:"tvc4",title:"Gimbal + servo bench test",desc:"Full servo sweep, angular range and torque verified. No binding at corner cases.",date:"Sep 2026"},
+  {id:"tvc5",title:"PID loop running on hardware",desc:"FC reads IMU, computes PID output, drives servos. Resists manual tilting on static test stand.",date:"Feb 2027"},
+  {id:"tvc6",title:"Fibreglass airframe fabricated",desc:"Wet layup tube to target diameter. Fin slots and motor mount aft section cut and fitted.",date:"Mar 2027"},
+  {id:"tvc7",title:"Full static fire test",desc:"Motor running in gimbal mount, FC controls servos live, all data logged. CG/CP margins confirmed.",date:"May 2027"},
+  {id:"tvc8",title:"First TVC flight",desc:"VRA-sanctioned launch. Stable powered ascent, dual-deploy recovery. Full post-flight data analysis.",date:"Aug 2027"}
+];
+
+const CERTS=[
+  {id:"cert1",title:"VRA Membership",urgency:"urgent",deadline:"Before Week 15 launch day",dlc:"deadline-urgent",
+   desc:"Join the Victorian Rocketry Association (Tripoli chapter). Required to legally fly G-motor rocket in Victoria. Covers public liability insurance and CASA-approved airspace at Serpentine/Drouin. Attend a launch as a visitor first to see how it works.",
+   tags:["tag-rocket","tag-legal"],tagLabels:["LAUNCH REQ","VICTORIA LAW"],cost:"~$80–100/yr",done:false},
+  {id:"cert2",title:"Tripoli L1 Certification",urgency:"upcoming",deadline:"2027 — after TVC build",dlc:"deadline-upcoming",
+   desc:"Required to purchase H and I class motors for the TVC rocket. Certify by successfully flying a rocket on an H or I motor at a VRA launch. Your TVC build will qualify. Prerequisites: active VRA membership, completed rocket, certified RSO present.",
+   tags:["tag-rocket","tag-legal"],tagLabels:["HIGH POWER","L1 CERT"],cost:"~$50 motor + VRA fees",done:false},
+  {id:"cert3",title:"WorkSafe Vic — G-class: no licence needed",urgency:"later",deadline:"Awareness only",dlc:"deadline-later",
+   desc:"In Victoria, motors up to 62.5g propellant (G-class and below) require no WorkSafe licence to purchase or use. For H+ motors on the TVC project, you will need a rocketry-based explosives licence obtained through VRA membership and Tripoli L1 certification. No action needed yet.",
+   tags:["tag-legal"],tagLabels:["VICTORIA LAW"],cost:"Free (G-class)",done:false}
+];
+
+const ENG_COURSES=[
+  {id:"eng1",title:"KiCad 7 — PCB Design (Phil's Lab)",urgency:"urgent",deadline:"Complete by Jun 2026",dlc:"deadline-urgent",
+   desc:"'KiCad 7 STM32 Hardware Design' by Phil's Lab (YouTube, free). Covers schematic capture, symbol/footprint libraries, PCB layout, DRC, and Gerber export. Must finish before starting Flight Computer schematic in July.",
+   tags:["tag-eng"],tagLabels:["FLIGHT COMPUTER"],cost:"Free",done:false},
+  {id:"eng2",title:"Embedded C/C++ — Miro Samek + STM32 HAL",urgency:"urgent",deadline:"Complete by Jul 2026",dlc:"deadline-urgent",
+   desc:"'Embedded Systems Programming' by Miro Samek (YouTube, free) + STM32 HAL documentation. Focus: GPIO, UART, SPI/I2C drivers, interrupts, timers, state machines in C. Practice on STM32 Nucleo dev board (~$20). Your Software Dev 3&4 background helps.",
+   tags:["tag-eng"],tagLabels:["FLIGHT COMPUTER"],cost:"~$20 (Nucleo board)",done:false},
+  {id:"eng3",title:"PID & Control Theory — Brian Douglas",urgency:"upcoming",deadline:"Complete by Jul 2026",dlc:"deadline-upcoming",
+   desc:"Brian Douglas 'Control System Lectures' (YouTube, free). Cover: Laplace transforms, transfer functions, root locus, Bode plots, PID tuning. Your Spesh Maths background (complex numbers, calculus) gives you a strong head start on Laplace and s-domain analysis.",
+   tags:["tag-eng"],tagLabels:["TVC ROCKET"],cost:"Free",done:false},
+  {id:"eng4",title:"Python 3DOF Simulation (scipy/numpy)",urgency:"upcoming",deadline:"Complete by Jun 2026",dlc:"deadline-upcoming",
+   desc:"Build a 3-degree-of-freedom rocket pitch dynamics simulator. Use scipy.integrate.solve_ivp to integrate equations of motion, numpy for matrix ops. Reference: Joe Barnard (BPS.space) open-source work. Your Methods 1–3 calculus is directly applicable.",
+   tags:["tag-eng"],tagLabels:["TVC ROCKET"],cost:"Free",done:false},
+  {id:"eng5",title:"Linear Algebra — 3Blue1Brown + MIT OCW 18.06",urgency:"upcoming",deadline:"Complete by Sep 2026",dlc:"deadline-upcoming",
+   desc:"'Essence of Linear Algebra' (3Blue1Brown) for geometric intuition, then MIT OCW 18.06 for rigour. Essential for: rotation matrices, quaternion attitude representation, basic Kalman filter (sensor fusion). Your complex numbers from Spesh 1&2 are good preparation.",
+   tags:["tag-eng"],tagLabels:["FLIGHT COMPUTER","TVC ROCKET"],cost:"Free",done:false},
+  {id:"eng6",title:"Fibreglass Wet Layup Construction",urgency:"later",deadline:"Early 2027",dlc:"deadline-later",
+   desc:"Rocketry Forum technical posts + Apogee Rockets technical reports (TIRs). Wet layup technique, mould prep, surface finishing. Practice on small test tubes before full TVC airframe. Budget ~$40–60 for practice materials.",
+   tags:["tag-eng","tag-rocket"],tagLabels:["TVC ROCKET","BUILD SKILL"],cost:"~$40–60 (materials)",done:false}
+];
+
+const VCE_ITEMS=[
+  {id:"vce1",title:"Specialist Maths 3&4 — Unit start",urgency:"upcoming",deadline:"Jan 2027 (Year 12 start)",dlc:"deadline-upcoming",
+   desc:"Spesh 3&4 covers complex analysis, differential equations, vector calculus, and mechanics — all directly relevant to your TVC control theory and flight dynamics simulation. Strong SAC performance is critical for ATAR. This is the highest-leverage subject for both ATAR and US app credibility.",
+   tags:["tag-vce"],tagLabels:["VCE Y12"],cost:"—",done:false},
+  {id:"vce2",title:"Methods 3&4 — SAC preparation",urgency:"upcoming",deadline:"Throughout 2027",dlc:"deadline-upcoming",
+   desc:"Calculus, probability, and statistics. SAC marks contribute to study score. The calculus here underpins your flight simulation and sensor fusion work.",
+   tags:["tag-vce"],tagLabels:["VCE Y12"],cost:"—",done:false},
+  {id:"vce3",title:"SAT Retake — Target 1580+",urgency:"upcoming",deadline:"Oct or Nov 2027",dlc:"deadline-upcoming",
+   desc:"Current practice score 1570 (800M / 770R&W). A 1580–1600 meaningfully strengthens MIT/Caltech applications. The 30-point gap is in R&W — focus on reading comprehension timing and grammar rules. Khan Academy targeted prep or a structured course recommended.",
+   tags:["tag-uni"],tagLabels:["US APPS"],cost:"~$80 AUD (test fee)",done:false},
+  {id:"vce4",title:"US Application Essays — Draft 1",urgency:"later",deadline:"Jun 2027",dlc:"deadline-later",
+   desc:"Start Common App personal statement and MIT/Caltech supplemental essays mid-2027. Your TVC rocket and flight computer are compelling engineering narrative anchors. Document your build journey with photos, data plots, and failure stories — authentic material. Avoid listing achievements; tell a story.",
+   tags:["tag-uni"],tagLabels:["US APPS"],cost:"—",done:false},
+  {id:"vce5",title:"Letters of Recommendation — Request",urgency:"later",deadline:"Aug 2027",dlc:"deadline-later",
+   desc:"Identify 2 teachers (Physics + Maths or Software Dev recommended) and 1 external recommender (FRC mentor or engineering supervisor). Request early and brief them well — show them your project documentation. US recommenders must submit via Common App portal.",
+   tags:["tag-uni"],tagLabels:["US APPS"],cost:"—",done:false},
+  {id:"vce6",title:"Regular Decision Applications — Submit",urgency:"later",deadline:"Jan 2028",dlc:"deadline-later",
+   desc:"Target schools: MIT, Caltech, Purdue, Georgia Tech, University of Michigan. RD deadlines typically Jan 1–5. All essays, test scores, recommendations and transcripts must be finalised. Aim to submit by Dec 20 2027 to avoid last-minute technical issues.",
+   tags:["tag-uni"],tagLabels:["RD JAN 2028"],cost:"~$80 AUD per school",done:false}
+];
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+
+let currentWeek=parseInt(localStorage.getItem('rmc_week')||'1');
+let completedWeeks=JSON.parse(localStorage.getItem('rmc_completed')||'[]');
+let expenses=JSON.parse(localStorage.getItem('rmc_expenses')||'[]');
+let completedCourses=JSON.parse(localStorage.getItem('rmc_courses')||'[]');
+let completedMilestones=JSON.parse(localStorage.getItem('rmc_milestones')||'[]');
+let projOpen={fc:true,tvc:true};
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+
+function init(){
+  renderSchedule();renderBudget();renderProjects();renderCourses();renderOverview();
+  updateWeekBadge();populateWeekSelect();
+}
+function updateWeekBadge(){document.getElementById('currentWeekBadge').textContent=`WEEK ${currentWeek} / 15`;}
+
+// ════════════════════════════════════════════════
+// SCHEDULE
+// ════════════════════════════════════════════════
+
+function renderSchedule(){
+  let h='';
+  PHASES.forEach(p=>{
+    h+=`<div class="phase-group"><div class="phase-hdr"><div class="phase-name" style="color:${p.color}">${p.name}</div><div class="phase-range">WK ${p.weeks[0].w}–${p.weeks[p.weeks.length-1].w}</div></div>`;
+    p.weeks.forEach(wk=>{
+      const iC=wk.w===currentWeek,iD=completedWeeks.includes(wk.w);
+      h+=`<div class="week-card ${iC?'current':''} ${iD?'done':''}" onclick="setCurrentWeek(${wk.w})">
+        <div class="wnum">WK<span class="n">${wk.w}</span></div>
+        <div><div class="wtitle">${wk.title}</div><div class="wdesc">${wk.desc}</div><span class="wcost cost-${wk.tier}">${wk.cost}</span></div>
+        <div class="check-circle ${iD?'done':''}" onclick="toggleWeekDone(event,${wk.w})"></div>
+      </div>`;
+    });
+    h+='</div>';
+  });
+  document.getElementById('schedule-content').innerHTML=h;
+}
+function setCurrentWeek(w){currentWeek=w;localStorage.setItem('rmc_week',w);updateWeekBadge();renderSchedule();renderOverview();}
+function toggleWeekDone(e,w){e.stopPropagation();completedWeeks=completedWeeks.includes(w)?completedWeeks.filter(x=>x!==w):[...completedWeeks,w];localStorage.setItem('rmc_completed',JSON.stringify(completedWeeks));renderSchedule();renderOverview();}
+
+// ════════════════════════════════════════════════
+// PROJECTS
+// ════════════════════════════════════════════════
+
+function renderProjects(){renderMilestoneList('fc-milestones',FC_MS);renderMilestoneList('tvc-milestones',TVC_MS);updateProjBadges();}
+function renderMilestoneList(id,list){
+  document.getElementById(id).innerHTML=list.map(ms=>{
+    const d=completedMilestones.includes(ms.id);
+    return `<div class="milestone-row">
+      <div class="ms-check ${d?'done':''}" onclick="toggleMs('${ms.id}')"></div>
+      <div><div class="ms-info-title" style="${d?'opacity:.4':''}">${ms.title}</div><div class="ms-info-desc">${ms.desc}</div></div>
+      <div class="ms-date">${ms.date}</div>
+    </div>`;
+  }).join('');
+}
+function toggleMs(id){completedMilestones=completedMilestones.includes(id)?completedMilestones.filter(x=>x!==id):[...completedMilestones,id];localStorage.setItem('rmc_milestones',JSON.stringify(completedMilestones));renderProjects();renderOverview();}
+function updateProjBadges(){
+  document.getElementById('fc-badge').textContent=Math.round(FC_MS.filter(m=>completedMilestones.includes(m.id)).length/FC_MS.length*100)+'%';
+  document.getElementById('tvc-badge').textContent=Math.round(TVC_MS.filter(m=>completedMilestones.includes(m.id)).length/TVC_MS.length*100)+'%';
+}
+function toggleProj(k){projOpen[k]=!projOpen[k];document.getElementById(k+'-body').style.display=projOpen[k]?'block':'none';document.getElementById(k+'-arrow').textContent=projOpen[k]?'▼':'▶';}
+
+// ════════════════════════════════════════════════
+// COURSES
+// ════════════════════════════════════════════════
+
+function renderCourseList(id,items){
+  document.getElementById(id).innerHTML=items.map(item=>{
+    const d=completedCourses.includes(item.id);
+    const tags=item.tags.map((t,i)=>`<span class="course-tag ${t}">${item.tagLabels[i]}</span>`).join('');
+    const costTag=item.cost&&item.cost!=='—'?`<span class="course-tag" style="background:rgba(255,255,255,.05);color:var(--text-dimmer);">${item.cost}</span>`:'';
+    return `<div class="course-card ${item.urgency} ${d?'done-card':''}">
+      <div>
+        <div class="course-title">${item.title}</div>
+        <div class="course-meta">${item.deadline}</div>
+        <div class="course-desc">${item.desc}</div>
+        <div style="margin-top:4px">${tags}${costTag}</div>
+      </div>
+      <div class="course-check">
+        <div class="deadline-label ${d?'deadline-done':item.dlc}">${d?'✓ DONE':item.urgency.toUpperCase()}</div>
+        <button class="toggle-btn ${d?'done-btn':''}" onclick="toggleCourse('${item.id}')">${d?'✓ DONE':'MARK DONE'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderCourses(){renderCourseList('cert-list',CERTS);renderCourseList('eng-list',ENG_COURSES);renderCourseList('vce-list',VCE_ITEMS);}
+function toggleCourse(id){completedCourses=completedCourses.includes(id)?completedCourses.filter(x=>x!==id):[...completedCourses,id];localStorage.setItem('rmc_courses',JSON.stringify(completedCourses));renderCourses();renderOverview();}
+
+// ════════════════════════════════════════════════
+// BUDGET
+// ════════════════════════════════════════════════
+
+function populateWeekSelect(){const s=document.getElementById('expenseWeek');s.innerHTML='';for(let i=1;i<=15;i++)s.innerHTML+=`<option value="${i}">Week ${i}</option>`;s.value=currentWeek;}
+function addExpense(){
+  const w=parseInt(document.getElementById('expenseWeek').value);
+  const d=document.getElementById('expenseDesc').value.trim();
+  const a=parseFloat(document.getElementById('expenseAmt').value);
+  if(!d||isNaN(a)||a<=0)return;
+  expenses.push({week:w,desc:d,amount:a});
+  localStorage.setItem('rmc_expenses',JSON.stringify(expenses));
+  document.getElementById('expenseDesc').value='';document.getElementById('expenseAmt').value='';
+  renderBudget();renderOverview();
+}
+function deleteExpense(i){expenses.splice(i,1);localStorage.setItem('rmc_expenses',JSON.stringify(expenses));renderBudget();renderOverview();}
+function renderBudget(){
+  const total=750,spent=expenses.reduce((s,e)=>s+e.amount,0),remain=total-spent,pct=Math.min(100,Math.round(spent/total*100));
+  document.getElementById('totalSpent').textContent=spent.toFixed(2);
+  document.getElementById('totalRemain').textContent=remain.toFixed(2);
+  document.getElementById('barPct').textContent=pct+'%';
+  document.getElementById('budgetBar').style.width=pct+'%';
+  document.getElementById('spentPercent').textContent=pct+'% used';
+  document.getElementById('remainWeeks').textContent=`~${Math.round(remain/50)} weeks runway`;
+  let h=`<div class="log-row" style="border-bottom:1px solid var(--border-bright)">
+    <div class="log-week" style="font-size:8px;color:var(--text-dimmer)">WEEK</div>
+    <div class="log-item" style="font-size:8px;color:var(--text-dimmer)">ITEM</div>
+    <div class="log-budget" style="font-size:8px;color:var(--text-dimmer)">BUDGET</div>
+    <div class="log-spent" style="font-size:8px;color:var(--text-dimmer)">SPENT</div><div></div></div>`;
+  if(expenses.length===0){h+=`<div style="padding:18px;text-align:center;font-family:var(--font-mono);font-size:9.5px;color:var(--text-dimmer)">NO EXPENSES LOGGED YET</div>`;}
+  else{expenses.forEach((e,i)=>{h+=`<div class="log-row"><div class="log-week">WK ${e.week}</div><div class="log-item">${e.desc}</div><div class="log-budget">$50.00</div><div class="log-spent ${e.amount>50?'over':'under'}">$${e.amount.toFixed(2)}</div><button class="del-btn" onclick="deleteExpense(${i})">✕</button></div>`;});}
+  document.getElementById('weeklyLog').innerHTML=h;
+}
+
+// ════════════════════════════════════════════════
+// OVERVIEW
+// ════════════════════════════════════════════════
+
+function renderOverview(){
+  document.getElementById('ov-rocket').textContent=Math.round(completedWeeks.length/15*100)+'%';
+  document.getElementById('ov-rocket-sub').textContent=`${completedWeeks.length} / 15 weeks done`;
+  const allC=[...CERTS,...ENG_COURSES,...VCE_ITEMS];
+  document.getElementById('ov-courses').textContent=Math.round(completedCourses.length/allC.length*100)+'%';
+  document.getElementById('ov-courses-sub').textContent=`${completedCourses.length} / ${allC.length} done`;
+  const allMs=[...FC_MS,...TVC_MS];
+  document.getElementById('ov-ms').textContent=Math.round(completedMilestones.length/allMs.length*100)+'%';
+  document.getElementById('ov-ms-sub').textContent=`${completedMilestones.length} / ${allMs.length} done`;
+  const spent=expenses.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('ov-budget').textContent='$'+(750-spent).toFixed(0);
+  document.getElementById('ov-budget-sub').textContent=`$${spent.toFixed(2)} spent so far`;
+  let fw=null;for(const p of PHASES)for(const w of p.weeks)if(w.w===currentWeek){fw=w;break;}
+  if(fw)document.getElementById('currentFocus').innerHTML=`<strong style="color:var(--text)">Week ${currentWeek}: ${fw.title}</strong><br>${fw.desc}<br><br><span style="font-family:var(--font-mono);font-size:8.5px;color:var(--text-dimmer)">EST. SPEND: ${fw.cost}</span>`;
+}
+
+// ════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════
+
+function switchTab(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ════════════════════════════════════════════════
+// CHAT
+// ════════════════════════════════════════════════
+
+const SYS=`You are Flight AI, Aarav's personal mission control assistant.
+
+AARAV'S PROFILE:
+- Year 11 student, Victoria, Australia (2026). Targeting 99.5 ATAR.
+- VCE subjects: Specialist Maths, Mathematical Methods, Physics, Literature, Religion & Society, Software Development 3&4
+- Completed: Spesh units 1&2, Methods units 1–3. Starting Spesh 3&4 and Methods 3&4 in 2027.
+- Extracurriculars: national-level FRC robotics, modular drone startup (Fusion 360, PLA-CF printing, folding arm design with ratchet locking mechanism), state-level competitive debating.
+- US uni goal: MIT, Caltech, Purdue, Georgia Tech, University of Michigan — Regular Decision January 2028.
+- SAT practice: 1570 (800M / 770R&W). Target 1580+.
+
+PROJECTS (April 2026 – September 2027):
+1. Custom Flight Computer: KiCad PCB from scratch, STM32/RP2040, IMU (ICM-42688) + barometer (BMP388) + GPS, SPI/I2C, dual pyro channels, flight state machine in embedded C/C++, flash data logging.
+2. TVC Rocket: 2-axis gimbal controlled by flight computer, PID control loop from IMU, Aerotech COTS motors, fibreglass airframe. NOT pursuing hybrid motor (N2O legal complexity + age restrictions in Victoria).
+
+KNOWLEDGE: Fusion 360, basic programming, Spesh 1&2 (trig, vectors, complex numbers, proof), Methods 1–3 (calculus, functions).
+GAPS: KiCad, embedded C/C++, PID theory, linear algebra, 3DOF Python simulation, fibreglass construction.
+
+ROCKET BUILD: 15 weeks, $50/week, 54mm mid-power scratch-built rocket. First flight at VRA-approved site.
+
+SCHEDULE:
+- April–Sep 2026: build + learn (8–12 hrs/week)
+- Oct–Nov 2026: Y11 exams (max 4 hrs/week)
+- Dec 2026–Sep 2027: main project build phase
+- Oct–Nov 2027: Y12 exams (max 4 hrs/week)
+- Jan 2028: RD application deadline
+
+VICTORIAN LAW:
+- CASA Part 101 — G-motor rocket exceeds 400ft AGL, needs approved airspace area
+- VRA (victorianrocketry.org.au) is the local Tripoli chapter — holds CASA approvals at Serpentine and Drouin sites
+- G-class motors (≤62.5g propellant) need no Victorian licence
+- H+ motors require Tripoli L1 cert + VRA membership + explosives licence
+
+KEY COURSES NEEDED:
+- KiCad (Phil's Lab YouTube) — urgent, before Jun 2026
+- Embedded C (Miro Samek + STM32 HAL) — urgent, before Jul 2026
+- PID/control theory (Brian Douglas YouTube) — Jul 2026
+- Python 3DOF simulation (scipy/numpy) — Jun 2026
+- Linear algebra (3Blue1Brown + MIT OCW 18.06) — Sep 2026
+- Fibreglass construction — early 2027
+
+Calibrate to Aarav's level: rigorous maths comfortable (can handle derivations), new to electronics and control theory. Prefer exact answers. Be direct, concise, practical. Reference week/budget/timeline when helpful. Max 180 words per response.`;
+
+let chatHistory=[];
+
+async function sendMessage(){
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();if(!text)return;
+  input.value='';autoResize(input);
+  document.getElementById('sendBtn').disabled=true;
+  appendMsg('user',text);chatHistory.push({role:'user',content:text});
+  const tid='t'+Date.now();
+  const td=document.createElement('div');td.className='msg ai';td.id=tid;
+  td.innerHTML=`<div class="msg-label">FLIGHT AI</div><div class="msg-bubble"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+  document.getElementById('chatMessages').appendChild(td);scrollChat();
+  const spent=expenses.reduce((s,e)=>s+e.amount,0);
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:SYS+`\n\nCURRENT STATE: Rocket build week ${currentWeek}, ${completedWeeks.length}/15 weeks done, $${spent.toFixed(2)} of $750 spent, ${completedMilestones.length}/${FC_MS.length+TVC_MS.length} project milestones done, ${completedCourses.length}/${[...CERTS,...ENG_COURSES,...VCE_ITEMS].length} courses/milestones marked complete.`,
+        messages:chatHistory
+      })
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Error. Try again.';
+    chatHistory.push({role:'assistant',content:reply});
+    document.getElementById(tid)?.remove();appendMsg('ai',reply);
+  }catch(e){document.getElementById(tid)?.remove();appendMsg('ai','Connection error. Check network.');}
+  document.getElementById('sendBtn').disabled=false;scrollChat();
+}
+function sendQuick(t){document.getElementById('chatInput').value=t;sendMessage();}
+function appendMsg(role,text){
+  const d=document.createElement('div');d.className='msg '+role;
+  d.innerHTML=`<div class="msg-label">${role==='user'?'AARAV':'FLIGHT AI'}</div><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  document.getElementById('chatMessages').appendChild(d);scrollChat();
+}
+function scrollChat(){const m=document.getElementById('chatMessages');m.scrollTop=m.scrollHeight;}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+
+init();
+</script>
+</body>
+</html>
