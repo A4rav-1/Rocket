@@ -703,18 +703,26 @@ async function sendMessage(){
   const spent=expenses.reduce((s,e)=>s+e.amount,0);
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',max_tokens:1000,
         system:SYS+`\n\nCURRENT STATE: Rocket build week ${currentWeek}, ${completedWeeks.length}/15 weeks done, $${spent.toFixed(2)} of $750 spent, ${completedMilestones.length}/${FC_MS.length+TVC_MS.length} project milestones done, ${completedCourses.length}/${[...CERTS,...ENG_COURSES,...VCE_ITEMS].length} courses/milestones marked complete.`,
         messages:chatHistory
       })
     });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err?.error?.message||`HTTP ${res.status}`);
+    }
     const data=await res.json();
-    const reply=data.content?.[0]?.text||'Error. Try again.';
+    const reply=data.content?.[0]?.text||'No response received. Try again.';
     chatHistory.push({role:'assistant',content:reply});
     document.getElementById(tid)?.remove();appendMsg('ai',reply);
-  }catch(e){document.getElementById(tid)?.remove();appendMsg('ai','Connection error. Check network.');}
+  }catch(e){
+    document.getElementById(tid)?.remove();
+    appendMsg('ai',`Error: ${e.message||'Unknown error'}. Make sure you are viewing this inside claude.ai (not as a local HTML file).`);
+  }
   document.getElementById('sendBtn').disabled=false;scrollChat();
 }
 function sendQuick(t){document.getElementById('chatInput').value=t;sendMessage();}
